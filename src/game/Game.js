@@ -203,6 +203,19 @@ export class Game {
 
     // Store as current level
     this.currentLevel = parsedLevel;
+
+    // Center camera on player immediately so first frame isn't at (0,0)
+    const player = this.entityManager.player;
+    if (player) {
+      this.camera.follow(player.x + player.width / 2, player.y + player.height / 2);
+      this.camera.clamp(parsedLevel.pxWid, parsedLevel.pxHei);
+    }
+
+    // Show level intro dialog if configured
+    const intro = CONFIG.levels.intros && CONFIG.levels.intros[levelId];
+    if (intro) {
+      this.dialogSystem.showIntro(intro.title, intro.message);
+    }
   }
 
   /**

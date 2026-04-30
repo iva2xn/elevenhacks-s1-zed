@@ -110,7 +110,7 @@ export class EntityManager {
    */
   update(dt, input, playerPos) {
     if (this.player && this.collision) {
-      this.player.update(dt, input, this.collision);
+      this.player.update(dt, input, this.collision, this.npcs);
     }
 
     if (this.follower && this.player) {

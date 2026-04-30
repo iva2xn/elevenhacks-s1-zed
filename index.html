@@ -2,16 +2,37 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Chinese RPG - Language Learning Adventure</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="gameContainer">
-    <canvas id="gameCanvas" width="672" height="320"></canvas>
-    <div id="uiOverlay">
-      <div id="dialogContainer"></div>
-      <div id="touchControls"></div>
+  <div id="gameWrapper">
+    <div id="missionBar" class="pixel-box">
+      <div class="mission-title">Missions</div>
+      <ul id="missionList">
+        <li>Talk to the motorcycle riders</li>
+      </ul>
+    </div>
+    <div id="gameContainer">
+      <canvas id="gameCanvas" width="320" height="180"></canvas>
+      <div id="uiOverlay"></div>
+    </div>
+    <div id="dialogContainer"></div>
+    <div id="mobileControls">
+      <div class="dpad">
+        <div class="empty"></div>
+        <button class="dpad-btn" data-dir="up">▲</button>
+        <div class="empty"></div>
+        <button class="dpad-btn" data-dir="left">◄</button>
+        <div class="empty"></div>
+        <button class="dpad-btn" data-dir="right">►</button>
+        <div class="empty"></div>
+        <button class="dpad-btn" data-dir="down">▼</button>
+        <div class="empty"></div>
+      </div>
+      <button class="interact-btn">TALK</button>
     </div>
   </div>
   <script type="module" src="src/main.js"></script>

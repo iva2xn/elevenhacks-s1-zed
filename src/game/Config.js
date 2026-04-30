@@ -4,33 +4,37 @@
  */
 export const CONFIG = {
   canvas: {
-    width: 672,
-    height: 320
+    width: 320,
+    height: 180
   },
   player: {
     speed: 100, // pixels per second
     spriteConfig: {
-      imageSrc: '',
-      frameWidth: 16,
-      frameHeight: 16,
+      basePath: 'character-movement',
+      prefix: 'lud',
+      frameWidth: 32,
+      frameHeight: 32,
+      collisionWidth: 14,
+      collisionHeight: 14,
       frameCount: 4,
-      animRowMap: { down: 0, left: 1, right: 2, up: 3 },
       animSpeed: 0.15 // seconds per frame
     }
   },
   follower: {
     followDelay: 15, // steps behind player (higher = more distance)
     spriteConfig: {
-      imageSrc: '',
-      frameWidth: 16,
-      frameHeight: 16,
+      basePath: 'character-movement',
+      prefix: 'michael',
+      frameWidth: 32,
+      frameHeight: 32,
+      collisionWidth: 14,
+      collisionHeight: 14,
       frameCount: 4,
-      animRowMap: { down: 0, left: 1, right: 2, up: 3 },
       animSpeed: 0.15
     }
   },
   interaction: {
-    range: 32 // pixels
+    range: 48 // pixels
   },
   scoring: {
     weights: {
@@ -54,6 +58,16 @@ export const CONFIG = {
     levelFiles: {
       'Level_1': 'Level_1.ldtkl',
       'Level_2': 'Level_2.ldtkl'
+    },
+    intros: {
+      'Level_1': {
+        title: 'Day 1 — The Street',
+        message: 'You just arrived in town. Walk around and talk to the motorcycle riders to practice your Chinese. Use arrow keys or WASD to move, Space to interact.'
+      },
+      'Level_2': {
+        title: 'Day 2 — The Market',
+        message: 'Great job yesterday! Today, explore the market area and chat with the locals. Keep practicing!'
+      }
     }
   },
   png: {

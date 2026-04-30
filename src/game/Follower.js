@@ -1,15 +1,8 @@
 /**
- * Follower - Companion character (Michael) that trails the player with a
- * position-history delay.
+ * Follower - Companion character (Michael) that trails the player.
  *
- * Each frame the player moves, the player's position is pushed into a history
- * buffer. Once the buffer exceeds `followDelay` entries the oldest position is
- * shifted off and used as the follower's target, creating a natural trailing
- * effect. Direction is derived from the position delta so the follower faces
- * the way it is walking.
- *
- * Uses the same sprite-sheet layout as Player: rows per direction, 4 frames
- * per direction, with a placeholder rectangle when the sprite hasn't loaded.
+ * Loads individual PNG frames per direction (same pattern as Player).
+ * Sprite is drawn centered on the collision bounding box.
  */
 import { CONFIG } from './Config.js';
 
@@ -17,88 +10,88 @@ export class Follower {
   /**
    * @param {number} x - Initial X position in world pixels
    * @param {number} y - Initial Y position in world pixels
-   * @param {object} spriteConfig - Sprite sheet configuration
-   * @param {string} spriteConfig.imageSrc - Path to the sprite sheet image
-   * @param {number} spriteConfig.frameWidth - Width of one frame in pixels
-   * @param {number} spriteConfig.frameHeight - Height of one frame in pixels
-   * @param {number} spriteConfig.frameCount - Number of frames per direction
-   * @param {Object} spriteConfig.animRowMap - Maps direction string to sprite row index
-   * @param {number} spriteConfig.animSpeed - Seconds per animation frame
+   * @param {object} spriteConfig - Sprite configuration
    */
   constructor(x, y, spriteConfig) {
-    // Position
     this.x = x;
     this.y = y;
 
-    // Sprite dimensions used as bounding box
-    this.frameWidth = spriteConfig?.frameWidth || 16;
-    this.frameHeight = spriteConfig?.frameHeight || 16;
-    this.width = this.frameWidth;
-    this.height = this.frameHeight;
+    this.width = spriteConfig?.collisionWidth || 14;
+    this.height = spriteConfig?.collisionHeight || 14;
+    this.frameWidth = spriteConfig?.frameWidth || 32;
+    this.frameHeight = spriteConfig?.frameHeight || 32;
 
-    // Movement state
     this.direction = 'down';
     this.isMoving = false;
 
-    // Position-history trailing
     this.positionHistory = [];
-    this.followDelay = CONFIG.follower?.followDelay ?? 10;
+    this.followDelay = CONFIG.follower?.followDelay ?? 15;
 
-    // Animation
     this.animFrame = 0;
     this.animTimer = 0;
     this.frameCount = spriteConfig?.frameCount || 4;
-    this.animRowMap = spriteConfig?.animRowMap || { down: 0, left: 1, right: 2, up: 3 };
     this.animSpeed = spriteConfig?.animSpeed || 0.15;
 
-    // Sprite sheet
-    this.spriteSheet = null;
-    this.spriteLoaded = false;
-    this._loadSprite(spriteConfig?.imageSrc);
+    // Individual frame images
+    this.frames = { down: [], up: [], left: [], right: [] };
+    this.idleFrames = { down: null, up: null, left: null, right: null };
+    this.spritesLoaded = false;
+    this._loadingCount = 0;
+    this._totalToLoad = 0;
+
+    this._loadFrames(spriteConfig?.basePath || 'character-movement', spriteConfig?.prefix || 'michael');
   }
 
-  /**
-   * Load the sprite sheet image asynchronously.
-   * @param {string|undefined} imageSrc - Path to the sprite sheet
-   * @private
-   */
-  _loadSprite(imageSrc) {
-    if (!imageSrc) {
-      return;
+  /** @private */
+  _loadFrames(basePath, prefix) {
+    const directions = ['down', 'up', 'left', 'right'];
+    this._totalToLoad = directions.length * this.frameCount + directions.length;
+
+    for (const dir of directions) {
+      for (let i = 1; i <= this.frameCount; i++) {
+        const img = new Image();
+        img.onload = () => this._onFrameLoaded();
+        img.onerror = () => {
+          console.warn(`Follower: missing frame ${basePath}/${prefix}-${dir}-${i}.png`);
+          this._onFrameLoaded();
+        };
+        img.src = `${basePath}/${prefix}-${dir}-${i}.png`;
+        this.frames[dir].push(img);
+      }
+
+      const idleImg = new Image();
+      idleImg.onload = () => this._onFrameLoaded();
+      idleImg.onerror = () => {
+        console.warn(`Follower: missing idle frame ${basePath}/${prefix}-idle-${dir}.png`);
+        this._onFrameLoaded();
+      };
+      idleImg.src = `${basePath}/${prefix}-idle-${dir}.png`;
+      this.idleFrames[dir] = idleImg;
     }
-    this.spriteSheet = new Image();
-    this.spriteSheet.onload = () => {
-      this.spriteLoaded = true;
-    };
-    this.spriteSheet.src = imageSrc;
+  }
+
+  /** @private */
+  _onFrameLoaded() {
+    this._loadingCount++;
+    if (this._loadingCount >= this._totalToLoad) {
+      this.spritesLoaded = true;
+    }
   }
 
   /**
-   * Update follower position based on the player's movement history.
-   *
-   * When the player is moving the current player position is recorded. Once
-   * enough history has accumulated the follower pops the oldest entry and
-   * moves there, creating a trailing effect. Direction is computed from the
-   * position delta between the follower's previous and new position.
-   *
-   * When the player is idle the follower stops in place and shows its idle
-   * animation frame.
-   *
-   * @param {number} dt - Delta time in seconds
-   * @param {number} playerX - Current player X position
-   * @param {number} playerY - Current player Y position
-   * @param {boolean} isPlayerMoving - Whether the player moved this frame
+   * Update follower position from player's movement history.
+   * @param {number} dt
+   * @param {number} playerX
+   * @param {number} playerY
+   * @param {boolean} isPlayerMoving
    */
   update(dt, playerX, playerY, isPlayerMoving) {
     if (isPlayerMoving) {
-      // Record the player's current position into the history buffer
       this.positionHistory.push({ x: playerX, y: playerY });
 
-      // When enough history has built up, consume the oldest entry
       if (this.positionHistory.length > this.followDelay) {
         const oldPos = this.positionHistory.shift();
 
-        // Compute direction from position delta
         const dx = oldPos.x - this.x;
         const dy = oldPos.y - this.y;
 
@@ -108,13 +101,11 @@ export class Follower {
           this.direction = dx > 0 ? 'right' : 'left';
         }
 
-        // Move to the oldest recorded position
         this.x = oldPos.x;
         this.y = oldPos.y;
         this.isMoving = true;
       }
 
-      // Advance walking animation
       if (this.isMoving) {
         this.animTimer += dt;
         if (this.animTimer >= this.animSpeed) {
@@ -123,7 +114,6 @@ export class Follower {
         }
       }
     } else {
-      // Player is idle — stop at current position and show idle frame
       this.isMoving = false;
       this.animFrame = 0;
       this.animTimer = 0;
@@ -131,40 +121,38 @@ export class Follower {
   }
 
   /**
-   * Draw the follower sprite at the camera-adjusted screen position.
-   *
-   * If the sprite sheet hasn't loaded yet, draws a colored rectangle as a
-   * placeholder so the follower is always visible.
-   *
-   * @param {CanvasRenderingContext2D} ctx - Canvas 2D context
-   * @param {import('./Camera.js').Camera} camera - Camera for coordinate conversion
+   * Draw the follower sprite centered on the collision bounding box.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {import('./Camera.js').Camera} camera
    */
   draw(ctx, camera) {
-    const screen = camera.worldToScreen(this.x, this.y);
+    const centerX = this.x + this.width / 2;
+    const centerY = this.y + this.height / 2;
 
-    if (this.spriteLoaded && this.spriteSheet) {
-      // Determine source rectangle on the sprite sheet
-      const row = this.animRowMap[this.direction] ?? 0;
-      const srcX = this.animFrame * this.frameWidth;
-      const srcY = row * this.frameHeight;
+    const screen = camera.worldToScreen(
+      centerX - this.frameWidth / 2,
+      centerY - this.frameHeight / 2
+    );
 
-      ctx.drawImage(
-        this.spriteSheet,
-        srcX, srcY, this.frameWidth, this.frameHeight,
-        screen.x, screen.y, this.frameWidth, this.frameHeight
-      );
+    let img = null;
+    if (this.isMoving) {
+      const dirFrames = this.frames[this.direction];
+      if (dirFrames && dirFrames[this.animFrame]) {
+        img = dirFrames[this.animFrame];
+      }
     } else {
-      // Placeholder rectangle while sprite is loading or missing
+      img = this.idleFrames[this.direction];
+    }
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, screen.x, screen.y, this.frameWidth, this.frameHeight);
+    } else {
+      const boxScreen = camera.worldToScreen(this.x, this.y);
       ctx.fillStyle = '#d94a4a';
-      ctx.fillRect(screen.x, screen.y, this.width, this.height);
+      ctx.fillRect(boxScreen.x, boxScreen.y, this.width, this.height);
     }
   }
 
-  /**
-   * Record a position to the history buffer.
-   * @param {number} x
-   * @param {number} y
-   */
   recordPosition(x, y) {
     this.positionHistory.push({ x, y });
   }
