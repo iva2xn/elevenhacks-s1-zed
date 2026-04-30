@@ -8,19 +8,22 @@ export const NPC_CONFIGS = {
     name: '摩托车骑手',
     greeting: '嘿，朋友！你也喜欢骑摩托车吗？这条路风景很好！',
     personality: 'A friendly and outgoing local motorcycle rider who loves cruising the streets.',
-    scenario: 'The player encounters a motorcycle rider taking a break by the roadside.'
+    scenario: 'The player encounters a motorcycle rider taking a break by the roadside.',
+    portrait: 'character-portrait/day1-npc.png'
   },
   Motorcycle_Rider_2: {
     name: '摩托车手小李',
     greeting: '你好！我刚从城里过来，路上堵车堵得厉害。',
     personality: 'A slightly more reserved motorcycle rider who is practical and informative.',
-    scenario: 'The player meets a second motorcycle rider who just arrived from the city.'
+    scenario: 'The player meets a second motorcycle rider who just arrived from the city.',
+    portrait: 'character-portrait/day1-npc.png'
   },
   TimeWaste: {
     name: '闲聊大叔',
     greeting: '哎呀，你不忙吧？来来来，咱们聊会儿天！',
     personality: 'A talkative older man who loves to chat about anything and everything.',
-    scenario: 'The player encounters a chatty local who wants to pass the time with conversation.'
+    scenario: 'The player encounters a chatty local who wants to pass the time with conversation.',
+    portrait: 'character-portrait/day1-npc.png'
   }
 };
 
@@ -131,7 +134,8 @@ export class NPC {
       name: this.config.name || this.identifier,
       greeting: this.config.greeting || '',
       personality: this.config.personality || '',
-      scenario: this.config.scenario || ''
+      scenario: this.config.scenario || '',
+      portrait: this.config.portrait || ''
     };
   }
 }

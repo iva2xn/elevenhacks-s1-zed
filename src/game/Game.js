@@ -249,52 +249,98 @@ export class Game {
    * @private
    */
   _wireDialogCallbacks() {
-    // When dialog opens: pause game, disable input
     this.dialogSystem.onOpen = () => {
       this.isPaused = true;
       this.input.setEnabled(false);
     };
 
-    // When dialog closes: resume game, re-enable input
     this.dialogSystem.onClose = () => {
       this.isPaused = false;
       this.input.setEnabled(true);
     };
 
-    // When "Start Conversation" is clicked: begin a conversation session
+    // Start conversation with mission context
     this.dialogSystem.onStartConversation = () => {
       const npc = this.dialogSystem.activeNPC;
       if (npc) {
-        this.conversationSystem.startSession(npc.getContext());
+        const levelId = this.currentLevel ? this.currentLevel.identifier : '';
+        const mission = CONFIG.levels.missions && CONFIG.levels.missions[levelId];
+        this.conversationSystem.startSession(npc.getContext(), mission);
       }
     };
 
-    // When "Speak" is clicked: capture speech and get NPC response
-    this.dialogSystem.onSpeak = async () => {
-      const entries = await this.conversationSystem.captureAndRespond();
-      if (entries) {
-        for (const entry of entries) {
-          this.dialogSystem.updateTranscript(entry);
+    // Start recording
+    this.dialogSystem.onStartRecording = () => {
+      this.conversationSystem.startRecording();
+    };
+
+    // Stop recording, process, evaluate
+    this.dialogSystem.onStopRecording = async () => {
+      const result = await this.conversationSystem.stopAndProcess();
+      if (!result) return;
+
+      for (const entry of result.entries) {
+        this.dialogSystem.updateTranscript(entry);
+      }
+
+      this.dialogSystem.onSpeakComplete();
+
+      // Mission complete or auto-advance → show transition screen
+      if (result.understood || result.autoAdvance) {
+        this.dialogSystem.showMissionResult(result.understood, result.autoAdvance);
+
+        // After a short delay, show the transition screen
+        const levelId = this.currentLevel ? this.currentLevel.identifier : '';
+        const mission = CONFIG.levels.missions && CONFIG.levels.missions[levelId];
+        if (mission) {
+          const days = result.understood ? mission.successDays : mission.failDays;
+          setTimeout(() => {
+            this.dialogSystem.close();
+            this._showTransition(mission.cityName, mission.cityNameEnglish, days);
+          }, 2000);
         }
       }
     };
 
-    // When "End Conversation" is clicked: end session, score, show results
-    this.dialogSystem.onEndConversation = async () => {
-      // Capture elapsed time BEFORE ending the session (endSession resets startTime)
-      const conversationTime = this.dialogSystem.startTime
-        ? (Date.now() - this.dialogSystem.startTime) / 1000
-        : this.conversationSystem.getElapsedTime();
+    // End conversation
+    this.dialogSystem.onEndConversation = () => {
+      this.conversationSystem.endSession();
+      this.dialogSystem.showResults();
+    };
+  }
 
-      const transcript = this.conversationSystem.endSession();
+  /**
+   * Show the transition screen between levels.
+   */
+  _showTransition(cityName, cityNameEnglish, days) {
+    const screen = document.getElementById('transitionScreen');
+    const cityEl = document.getElementById('transitionCity');
+    const timeEl = document.getElementById('transitionTime');
+    const btn = document.getElementById('transitionContinue');
 
-      const scoreResult = await this.scoringSystem.evaluate(transcript, conversationTime);
-      this.dialogSystem.showResults(scoreResult);
+    cityEl.innerHTML = `You arrived at:<br><br><span style="font-size:24px">${cityName}</span><br><span style="font-size:12px">${cityNameEnglish}</span>`;
+    timeEl.textContent = `Time spent: ${days} day${days > 1 ? 's' : ''}`;
+
+    screen.classList.add('active');
+
+    // Wire continue button to load next level
+    const handler = async () => {
+      btn.removeEventListener('click', handler);
+      screen.classList.remove('active');
+
+      // Determine next level
+      const currentId = this.currentLevel ? this.currentLevel.identifier : 'Level_1';
+      const levelNum = parseInt(currentId.replace('Level_', ''), 10);
+      const nextId = 'Level_' + (levelNum + 1);
+
+      if (CONFIG.levels.levelFiles[nextId]) {
+        await this.transitionToLevel(nextId);
+      } else {
+        // No more levels — show a final message
+        this.dialogSystem.showIntro('The End', 'You have completed all stages. Great job practicing your Chinese!');
+      }
     };
 
-    // Results dismissed is handled by the close callback (dialog closes itself)
-    this.dialogSystem.onResultsDismissed = () => {
-      // The close() call in DialogSystem handles resuming the game
-    };
+    btn.addEventListener('click', handler);
   }
 }

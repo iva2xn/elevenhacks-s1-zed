@@ -62,11 +62,31 @@ export const CONFIG = {
     intros: {
       'Level_1': {
         title: 'Day 1 — The Street',
-        message: 'You just arrived in town. Walk around and talk to the motorcycle riders to practice your Chinese. Use arrow keys or WASD to move, Space to interact.'
+        message: 'You just arrived in town. Ask someone how to get to the next town. Use arrow keys or WASD to move, Space to interact.'
       },
       'Level_2': {
         title: 'Day 2 — The Market',
         message: 'Great job yesterday! Today, explore the market area and chat with the locals. Keep practicing!'
+      }
+    },
+    missions: {
+      'Level_1': {
+        goal: 'Ask someone how to get to the next town',
+        keywords: ['下一个', '城镇', '镇', '怎么去', '怎么走', '去哪', '下个', '北', '往北', '方向', '路'],
+        keywordsEnglish: ['next town', 'direction', 'how to get', 'which way', 'north', 'where'],
+        cityName: '龙泉镇',
+        cityNameEnglish: 'Longquan Town',
+        successDays: 1,
+        failDays: 3
+      },
+      'Level_2': {
+        goal: 'Order food at the restaurant',
+        keywords: ['点菜', '吃饭', '菜单', '要一个', '来一份'],
+        keywordsEnglish: ['order', 'food', 'menu', 'eat'],
+        cityName: '翠竹村',
+        cityNameEnglish: 'Cuizhu Village',
+        successDays: 1,
+        failDays: 3
       }
     }
   },

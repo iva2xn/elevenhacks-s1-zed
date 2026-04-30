@@ -12,3 +12,7 @@ node_modules/
 
 # Kiro
 .kiro/
+
+# Environment secrets
+.env
+config.local.js

@@ -1,132 +1,145 @@
 /**
- * ConversationSystem - Manages the speech capture → transcribe → respond → playback cycle.
+ * ConversationSystem — manages the speak → transcribe → evaluate → respond cycle
+ * with 3-attempt fallback logic.
  *
- * Orchestrates a full conversation session between the player and an NPC by
- * calling the stubbed ElevenLabs API functions in sequence and maintaining a
- * timestamped transcript of all exchanges.
+ * Attempt 1-2: Chinese only
+ * Attempt 3: English allowed
+ * If all 3 fail: auto-advance with 2-day penalty
  */
 
 import {
+  recordAudio,
+  stopRecording,
   transcribeSpeechWithElevenLabs,
   generateNativeChineseResponse,
-  speakWithElevenLabs
+  speakWithElevenLabs,
+  evaluateResponse
 } from '../api/elevenlabs.js';
 
 export class ConversationSystem {
   constructor() {
-    /** @type {Array<{role: 'player'|'npc', text: string, timestamp: number}>} */
     this.transcript = [];
-
-    /** True while a captureAndRespond cycle is in progress. */
     this.isProcessing = false;
-
-    /** NPC context for the active session. */
+    this.isRecording = false;
     this.npcContext = null;
-
-    /** Timestamp (ms) when the session started. */
     this.startTime = null;
+    this.attempt = 0;
+    this.maxAttempts = 3;
+    this.mission = null;
+    this.missionComplete = false;
+    this._recordingPromise = null;
   }
 
-  /**
-   * Begin a new conversation session.
-   * Initialises the transcript, records the start time, and stores the NPC context.
-   *
-   * @param {object} npcContext - NPC context object { identifier, name, greeting, personality, scenario }
-   */
-  async startSession(npcContext) {
+  async startSession(npcContext, mission) {
     this.transcript = [];
     this.startTime = Date.now();
     this.npcContext = npcContext;
+    this.attempt = 0;
+    this.mission = mission;
+    this.missionComplete = false;
     this.isProcessing = false;
+    this.isRecording = false;
   }
 
   /**
-   * Execute a full speak cycle: capture → transcribe → respond → playback.
-   *
-   * 1. Set isProcessing = true
-   * 2. Transcribe player speech via STT stub
-   * 3. Add player entry to transcript
-   * 4. Generate NPC response via conversational AI stub
-   * 5. Add NPC entry to transcript
-   * 6. Play back NPC response via TTS stub
-   * 7. Set isProcessing = false
-   *
-   * @returns {Promise<Array<{role: string, text: string, timestamp: number}>|null>}
-   *   The two new transcript entries (player + npc), or null if already processing.
+   * Start recording audio from the microphone.
    */
-  async captureAndRespond() {
-    // Prevent overlapping calls
-    if (this.isProcessing) {
-      return null;
-    }
+  async startRecording() {
+    if (this.isRecording || this.isProcessing) return;
+    this.isRecording = true;
+    this._recordingPromise = recordAudio();
+  }
 
+  /**
+   * Stop recording and process the audio:
+   * transcribe → evaluate → generate NPC response → TTS playback.
+   *
+   * @returns {Promise<{entries: Array, understood: boolean, attempt: number, autoAdvance: boolean}>}
+   */
+  async stopAndProcess() {
+    if (!this.isRecording) return null;
+
+    this.isRecording = false;
     this.isProcessing = true;
+    this.attempt++;
 
     try {
-      // Step 1 – Transcribe player speech (null audioBlob for mock)
-      const transcriptText = await transcribeSpeechWithElevenLabs(null);
+      // Stop recording and get the audio blob
+      stopRecording();
+      const audioBlob = await this._recordingPromise;
 
-      // Step 2 – Record player entry
+      // Transcribe
+      const playerText = await transcribeSpeechWithElevenLabs(audioBlob);
+
       const playerEntry = {
         role: 'player',
-        text: transcriptText,
+        text: playerText || '(try speaking louder or closer to the mic)',
         timestamp: Date.now() - this.startTime
       };
       this.transcript.push(playerEntry);
 
-      // Step 3 – Generate NPC response
-      const responseText = await generateNativeChineseResponse(transcriptText, this.npcContext);
+      // If nothing was detected, don't count as an attempt
+      if (!playerText || playerText.trim().length === 0) {
+        this.attempt--;
+      }
 
-      // Step 4 – Record NPC entry
+      // Evaluate against mission
+      const evaluation = this.mission
+        ? evaluateResponse(playerText, this.mission, this.attempt)
+        : { understood: true, language: 'chinese' };
+
+      this.missionComplete = evaluation.understood;
+
+      // Generate NPC response
+      const npcText = await generateNativeChineseResponse(
+        playerText, this.npcContext, this.attempt, evaluation.understood
+      );
+
       const npcEntry = {
         role: 'npc',
-        text: responseText,
+        text: npcText,
         timestamp: Date.now() - this.startTime
       };
       this.transcript.push(npcEntry);
 
-      // Step 5 – Play back the NPC response audio
-      await speakWithElevenLabs(responseText);
+      // Speak the NPC response via TTS
+      // Use a different voice for English responses on attempt 3
+      const isEnglishResponse = this.attempt >= 3 && !evaluation.understood;
+      await speakWithElevenLabs(npcText);
 
-      return [playerEntry, npcEntry];
+      // Check if we've exhausted all attempts without success
+      const autoAdvance = !this.missionComplete && this.attempt >= this.maxAttempts;
+
+      return {
+        entries: [playerEntry, npcEntry],
+        understood: evaluation.understood,
+        attempt: this.attempt,
+        autoAdvance
+      };
     } finally {
       this.isProcessing = false;
     }
   }
 
-  /**
-   * End the current session and return the full transcript history.
-   * Resets internal state so a new session can be started.
-   *
-   * @returns {Array<{role: 'player'|'npc', text: string, timestamp: number}>}
-   */
   endSession() {
     const history = this.transcript;
     this.transcript = [];
     this.npcContext = null;
     this.startTime = null;
+    this.attempt = 0;
+    this.mission = null;
+    this.missionComplete = false;
     this.isProcessing = false;
+    this.isRecording = false;
     return history;
   }
 
-  /**
-   * Get the full transcript history for the active session.
-   *
-   * @returns {Array<{role: 'player'|'npc', text: string, timestamp: number}>}
-   */
   getTranscriptHistory() {
     return this.transcript;
   }
 
-  /**
-   * Get elapsed time in seconds since the session started.
-   *
-   * @returns {number} Elapsed seconds, or 0 if no session is active.
-   */
   getElapsedTime() {
-    if (this.startTime === null) {
-      return 0;
-    }
+    if (!this.startTime) return 0;
     return (Date.now() - this.startTime) / 1000;
   }
 }
