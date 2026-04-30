@@ -61,12 +61,24 @@ export const CONFIG = {
     },
     intros: {
       'Level_1': {
-        title: 'Day 1 — The Street',
-        message: 'You just arrived in town. Ask someone how to get to the next town. Use arrow keys or WASD to move, Space to interact.'
+        title: 'Day 1 — Guangzhou',
+        message: 'Ask someone how to get to the next town. Use arrow keys or WASD to move, Space to interact.',
+        introConversation: [
+          { speaker: 'ludwig', name: 'Ludwig', portrait: 'character-portrait/ludwig-portrait.png', text: "Alright Michael, we just landed in Guangzhou. This is it — we're actually in China." },
+          { speaker: 'michael', name: 'Michael', portrait: 'character-portrait/michael-portrait.png', text: "Yeah... and I don't speak a word of Chinese. How are we supposed to get around?" },
+          { speaker: 'ludwig', name: 'Ludwig', portrait: 'character-portrait/ludwig-portrait.png', text: "That's the whole point! We learn by doing." },
+          { speaker: 'michael', name: 'Michael', portrait: 'character-portrait/michael-portrait.png', text: "So... how do you think we get out of this area? Or get to the next destination?" },
+          { speaker: 'ludwig', name: 'Ludwig', portrait: 'character-portrait/ludwig-portrait.png', text: "Let's ask our boys over there." }
+        ]
       },
       'Level_2': {
-        title: 'Day 2 — The Market',
-        message: 'Great job yesterday! Today, explore the market area and chat with the locals. Keep practicing!'
+        title: 'Day 2 — Gas Station',
+        message: 'Find a store and ask for a compass. Look for doors to enter buildings.',
+        introConversation: [
+          { speaker: 'ludwig', name: 'Ludwig', portrait: 'character-portrait/ludwig-portrait.png', text: "Alright, we just got gas. Tank's full." },
+          { speaker: 'michael', name: 'Michael', portrait: 'character-portrait/michael-portrait.png', text: "We should go get a compass from a store or something. We keep getting lost." },
+          { speaker: 'ludwig', name: 'Ludwig', portrait: 'character-portrait/ludwig-portrait.png', text: "Good idea. Let's look around for a shop." }
+        ]
       }
     },
     missions: {
@@ -80,9 +92,9 @@ export const CONFIG = {
         failDays: 3
       },
       'Level_2': {
-        goal: 'Order food at the restaurant',
-        keywords: ['点菜', '吃饭', '菜单', '要一个', '来一份'],
-        keywordsEnglish: ['order', 'food', 'menu', 'eat'],
+        goal: 'Find a store and ask for a compass',
+        keywords: ['指南针', '罗盘', '买', '要', '有没有', '卖', '店', '商店'],
+        keywordsEnglish: ['compass', 'buy', 'store', 'shop', 'sell'],
         cityName: '翠竹村',
         cityNameEnglish: 'Cuizhu Village',
         successDays: 1,

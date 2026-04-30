@@ -24,6 +24,13 @@ export const NPC_CONFIGS = {
     personality: 'A talkative older man who loves to chat about anything and everything.',
     scenario: 'The player encounters a chatty local who wants to pass the time with conversation.',
     portrait: 'character-portrait/day1-npc.png'
+  },
+  Door_Shopkeeper: {
+    name: '店员小姐',
+    greeting: '欢迎光临！请问您需要什么？',
+    personality: 'A friendly young shopkeeper who is helpful and patient with foreigners.',
+    scenario: 'The player enters a store and needs to ask the shopkeeper for a compass.',
+    portrait: 'character-portrait/day1-npc.png'
   }
 };
 

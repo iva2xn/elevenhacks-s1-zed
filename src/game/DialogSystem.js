@@ -104,11 +104,19 @@ export class DialogSystem {
 
     this.closeBtn = document.createElement('button');
     this.closeBtn.textContent = 'Close';
-    this.closeBtn.addEventListener('click', () => this.close());
+    this.closeBtn.addEventListener('click', () => this._onCloseClick());
     this.buttonsContainer.appendChild(this.closeBtn);
 
     this.dialogBox.appendChild(this.buttonsContainer);
     this.container.appendChild(this.dialogBox);
+  }
+
+  _onCloseClick() {
+    if (this._introLines && this._introIndex < this._introLines.length) {
+      this._advanceIntro();
+    } else {
+      this.close();
+    }
   }
 
   _onSpeakClick() {
@@ -171,7 +179,11 @@ export class DialogSystem {
     // Show portraits if NPC has a portrait
     const npcPortraitSrc = npc.getContext().portrait || npc.config?.portrait;
     if (npcPortraitSrc) {
+      // Always show michael-and-lud on the left for NPC conversations
+      this.playerPortrait.src = 'character-portrait/michael-and-lud.png';
+      this.playerPortrait.style.opacity = '1';
       this.npcPortrait.src = npcPortraitSrc;
+      this.npcPortrait.style.opacity = '1';
       this.portraitBar.classList.add('active');
     } else {
       this.portraitBar.classList.remove('active');
@@ -187,8 +199,25 @@ export class DialogSystem {
     this._isRecording = false;
     this.startTime = null;
 
-    this.container.classList.remove('active');
+    // Clear contents but keep the box visible
+    this.npcNameEl.textContent = '';
+    this.greetingEl.textContent = '';
+    this.greetingEl.style.display = 'none';
+    this.transcriptArea.style.display = 'none';
+    this.transcriptArea.innerHTML = '';
+    this.statusEl.style.display = 'none';
+    this.startConversationBtn.style.display = 'none';
+    this.speakBtn.style.display = 'none';
+    this.stopBtn.style.display = 'none';
+    this.endConversationBtn.style.display = 'none';
+    this.closeBtn.style.display = 'none';
+
+    // Hide portraits
     this.portraitBar.classList.remove('active');
+
+    // Keep container active (visible) but empty
+    this.container.classList.add('active');
+
     if (this.onClose) this.onClose();
   }
 
@@ -228,7 +257,7 @@ export class DialogSystem {
       msgEl.textContent = '✓ Objective complete!';
     } else if (autoAdvance) {
       msgEl.style.color = '#a05020';
-      msgEl.textContent = '— Moving on (2 days consumed) —';
+      msgEl.textContent = '— Moving on (3 days consumed) —';
     }
 
     if (understood || autoAdvance) {
@@ -293,5 +322,94 @@ export class DialogSystem {
 
     this.container.classList.add('active');
     if (this.onOpen) this.onOpen();
+  }
+
+  /**
+   * Show an intro conversation between Ludwig and Michael.
+   * Steps through dialogue lines one at a time with portraits.
+   * @param {string} title - Level title
+   * @param {Array} lines - Array of { speaker, name, portrait, text }
+   * @param {Function} onDone - Called when conversation finishes
+   */
+  showIntroConversation(title, lines, onDone) {
+    this.isOpen = true;
+    this.activeNPC = null;
+    this.conversationActive = false;
+    this._introLines = lines;
+    this._introIndex = 0;
+    this._introOnDone = onDone;
+
+    this.startConversationBtn.style.display = 'none';
+    this.speakBtn.style.display = 'none';
+    this.stopBtn.style.display = 'none';
+    this.endConversationBtn.style.display = 'none';
+    this.statusEl.style.display = 'none';
+    this.transcriptArea.style.display = 'none';
+
+    // Set up both portraits — ludwig on left, michael on right
+    const ludwigLine = lines.find(l => l.speaker === 'ludwig');
+    const michaelLine = lines.find(l => l.speaker === 'michael');
+    if (ludwigLine) this.playerPortrait.src = ludwigLine.portrait;
+    if (michaelLine) this.npcPortrait.src = michaelLine.portrait;
+    this.portraitBar.classList.add('active');
+
+    this._showIntroLine();
+
+    // Close button becomes "Next" during intro
+    this.closeBtn.textContent = 'Next ▸';
+    this.closeBtn.style.display = '';
+
+    this.dialogBox.style.display = '';
+    this.container.classList.add('active');
+
+    if (this.onOpen) this.onOpen();
+  }
+
+  /** @private */
+  _showIntroLine() {
+    const line = this._introLines[this._introIndex];
+    if (!line) return;
+
+    this.npcNameEl.textContent = line.name;
+    this.greetingEl.textContent = line.text;
+    this.greetingEl.style.display = '';
+
+    // Highlight active speaker, dim the other
+    if (line.speaker === 'ludwig') {
+      this.playerPortrait.style.opacity = '1';
+      this.npcPortrait.style.opacity = '0.4';
+    } else {
+      this.playerPortrait.style.opacity = '0.4';
+      this.npcPortrait.style.opacity = '1';
+    }
+  }
+
+  /** @private */
+  _advanceIntro() {
+    this._introIndex++;
+    if (this._introIndex < this._introLines.length) {
+      this._showIntroLine();
+    } else {
+      // Done — hide portraits, restore close button, then call onDone
+      this.portraitBar.classList.remove('active');
+      this.playerPortrait.style.opacity = '1';
+      this.npcPortrait.style.opacity = '1';
+
+      // Restore close button
+      this.closeBtn.textContent = 'Close';
+
+      // Clear intro state
+      this._introLines = null;
+      this._introIndex = 0;
+
+      // Hide dialog without triggering onClose (we want to show the objective next)
+      this.npcNameEl.textContent = '';
+      this.greetingEl.textContent = '';
+      this.greetingEl.style.display = 'none';
+      this.closeBtn.style.display = 'none';
+      this.isOpen = false;
+
+      if (this._introOnDone) this._introOnDone();
+    }
   }
 }

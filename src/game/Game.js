@@ -12,6 +12,7 @@ import { Renderer } from './Renderer.js';
 import { LDtkLoader } from './LDtkLoader.js';
 import { Collision } from './Collision.js';
 import { EntityManager } from './EntityManager.js';
+import { NPC, NPC_CONFIGS } from './NPC.js';
 import { DialogSystem } from './DialogSystem.js';
 import { ConversationSystem } from './ConversationSystem.js';
 import { ScoringSystem } from './ScoringSystem.js';
@@ -158,7 +159,10 @@ export class Game {
         if (door.targetLevel) {
           this.transitionToLevel(door.targetLevel, door.targetSpawn);
         } else {
-          console.warn('Door has no targetLevel field — ignoring interaction.');
+          // Door without targetLevel — open shopkeeper conversation
+          const shopConfig = NPC_CONFIGS.Door_Shopkeeper || { name: 'Shopkeeper', greeting: 'Welcome!' };
+          const virtualNpc = new NPC('Door_Shopkeeper', door.x, door.y, door.width, door.height, shopConfig);
+          this.dialogSystem.open(virtualNpc);
         }
         return;
       }
@@ -204,6 +208,13 @@ export class Game {
     // Store as current level
     this.currentLevel = parsedLevel;
 
+    // Update objective text
+    const mission = CONFIG.levels.missions && CONFIG.levels.missions[levelId];
+    const objectiveEl = document.getElementById('objectiveText');
+    if (objectiveEl && mission) {
+      objectiveEl.textContent = mission.goal;
+    }
+
     // Center camera on player immediately so first frame isn't at (0,0)
     const player = this.entityManager.player;
     if (player) {
@@ -213,7 +224,12 @@ export class Game {
 
     // Show level intro dialog if configured
     const intro = CONFIG.levels.intros && CONFIG.levels.intros[levelId];
-    if (intro) {
+    if (intro && intro.introConversation) {
+      this.dialogSystem.showIntroConversation(intro.title, intro.introConversation, () => {
+        // After intro conversation, show the objective message briefly
+        this.dialogSystem.showIntro(intro.title, intro.message);
+      });
+    } else if (intro) {
       this.dialogSystem.showIntro(intro.title, intro.message);
     }
   }
@@ -252,11 +268,13 @@ export class Game {
     this.dialogSystem.onOpen = () => {
       this.isPaused = true;
       this.input.setEnabled(false);
+      this.canvas.classList.add('blurred');
     };
 
     this.dialogSystem.onClose = () => {
       this.isPaused = false;
       this.input.setEnabled(true);
+      this.canvas.classList.remove('blurred');
     };
 
     // Start conversation with mission context
